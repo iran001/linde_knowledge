@@ -10,7 +10,7 @@ from typing import Dict, Any, List
 # =============================================================================
 SERVER_CONFIG = {
     "host": "0.0.0.0",
-    "backend_port": 8000,
+    "backend_port": 80,
     "frontend_port": 8501,
     "reload": True
 }
@@ -36,7 +36,7 @@ RAGFLOW_CONFIG = {
     "img_url": "http://118.31.184.47/v1/document/image",
     "api_key": "ragflow-Q3NDEzYzcwNGE1ZDExZjBhMTMxODY3Ym",
     "dataset_id": "ab05ba052a3811f1aa82eedd71480346",
-    "vl_dataset_id": "a348c791291211f19891e67a6a3f482a",
+    "vl_dataset_id": "9a46d7f3291111f195eee67a6a3f482a",
     "timeout": 60,
     "page_size": 10
 }

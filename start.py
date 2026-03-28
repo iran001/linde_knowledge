@@ -34,7 +34,7 @@ def start_backend():
         sys.executable, "-m", "uvicorn",
         "backend:app",
         "--host", "0.0.0.0",
-        "--port", "8000",
+        "--port", "80",
         "--reload"
     ]
     # 将输出重定向到 logs 目录下的日期命名文件
@@ -69,14 +69,14 @@ def main():
     backend_process = start_backend()
     processes.append(backend_process)
     time.sleep(3)
-    print(f"      [OK] 服务已启动: http://localhost:8000")
+    print(f"      [OK] 服务已启动: http://localhost")
     print()
 
     print("-" * 70)
     print("访问地址:")
-    print(f"  - 首页:      http://localhost:8000")
-    print(f"  - API文档:   http://localhost:8000/docs")
-    print(f"  - ReDoc:     http://localhost:8000/redoc")
+    print(f"  - 首页:      http://localhost")
+    print(f"  - API文档:   http://localhost/docs")
+    print(f"  - ReDoc:     http://localhost/redoc")
     print("-" * 70)
     print()
     print("按 Ctrl+C 停止服务")
