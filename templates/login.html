@@ -1,0 +1,358 @@
+{% extends "base.html" %}
+
+{% block title %}登录 - {{ app_name }}{% endblock %}
+
+{% block extra_css %}
+<style>
+    /* 登录页面专用样式 */
+    .login-page {
+        min-height: 100vh;
+        background-image: url('{{ background_image }}');
+        background-size: cover;
+        background-position: center;
+        background-attachment: fixed;
+        display: flex;
+        flex-direction: column;
+        padding: 20px;
+    }
+
+    /* 顶部标题区域 */
+    .login-header {
+        display: flex;
+        align-items: center;
+        justify-content: flex-start;
+        gap: 15px;
+        margin-bottom: 40px;
+        padding-top: 20px;
+        position: absolute;
+        top: 20px;
+        left: 20px;
+    }
+
+    .login-header-logo {
+        height: 50px;
+        width: auto;
+    }
+
+    .login-header-text {
+        text-align: left;
+    }
+
+    .login-header-title {
+        color: #1a5276;
+        font-size: 2rem;
+        font-weight: bold;
+        margin: 0;
+        letter-spacing: 2px;
+    }
+
+    .login-header-subtitle {
+        color: #666;
+        font-size: 1rem;
+        margin: 0;
+        letter-spacing: 1px;
+    }
+
+    /* 主内容区域 */
+    .login-main {
+        flex: 1;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        gap: 60px;
+    }
+
+    /* 登录卡片 */
+    .login-card {
+        background: white;
+        border-radius: 8px;
+        box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+        padding: 40px 50px;
+        width: 100%;
+        max-width: 400px;
+        text-align: center;
+    }
+
+    .login-card-title {
+        color: #333;
+        font-size: 1.5rem;
+        font-weight: bold;
+        margin-bottom: 30px;
+        letter-spacing: 4px;
+    }
+
+    .form-group {
+        margin-bottom: 20px;
+        text-align: left;
+    }
+
+    .form-input-wrapper {
+        position: relative;
+        display: flex;
+        align-items: center;
+        border: 1px solid #ddd;
+        border-radius: 4px;
+        padding: 0 15px;
+        height: 45px;
+        transition: border-color 0.3s;
+    }
+
+    .form-input-wrapper:focus-within {
+        border-color: #1a5276;
+    }
+
+    .form-input-icon {
+        color: #999;
+        font-size: 1.1rem;
+        margin-right: 10px;
+    }
+
+    .form-input {
+        border: none;
+        outline: none;
+        font-size: 0.95rem;
+        color: #333;
+        width: 100%;
+        background: transparent;
+    }
+
+    .form-input::placeholder {
+        color: #999;
+    }
+
+    /* 记住密码 */
+    .remember-row {
+        display: flex;
+        align-items: center;
+        margin-bottom: 25px;
+        font-size: 0.9rem;
+        color: #666;
+    }
+
+    .remember-row input[type="checkbox"] {
+        margin-right: 8px;
+        width: 16px;
+        height: 16px;
+        cursor: pointer;
+    }
+
+    .remember-row label {
+        cursor: pointer;
+    }
+
+    /* 登录按钮 */
+    .btn-login {
+        background: #1a5276;
+        color: white;
+        border: none;
+        border-radius: 4px;
+        padding: 12px;
+        font-size: 1rem;
+        font-weight: 500;
+        width: 100%;
+        cursor: pointer;
+        transition: all 0.3s;
+        letter-spacing: 2px;
+    }
+
+    .btn-login:hover {
+        background: #154360;
+    }
+
+    /* 底部链接 */
+    .login-links {
+        margin-top: 15px;
+        display: flex;
+        justify-content: center;
+        gap: 10px;
+    }
+
+    .login-links a {
+        color: #666;
+        text-decoration: none;
+        font-size: 0.9rem;
+    }
+
+    .login-links a:hover {
+        color: #1a5276;
+        text-decoration: underline;
+    }
+
+    .login-links .divider {
+        color: #ddd;
+    }
+
+    /* 右侧功能图标区域 */
+    .feature-icons {
+        display: flex;
+        flex-direction: column;
+        gap: 20px;
+        padding-top: 20px;
+    }
+
+    .feature-icon-item {
+        width: 80px;
+        height: 80px;
+        background: rgba(255, 255, 255, 0.9);
+        border-radius: 8px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+    }
+
+    .feature-icon-item svg {
+        width: 45px;
+        height: 45px;
+        fill: #1a5276;
+    }
+
+    /* 提示信息 */
+    .alert {
+        padding: 12px;
+        border-radius: 4px;
+        margin-bottom: 20px;
+        font-size: 0.9rem;
+    }
+
+    .alert-error {
+        background: #f8d7da;
+        color: #721c24;
+        border: 1px solid #f5c6cb;
+    }
+
+    .alert-warning {
+        background: #fff3cd;
+        color: #856404;
+        border: 1px solid #ffeaa7;
+    }
+
+    /* 测试账号 */
+    .test-account {
+        margin-top: 15px;
+        color: #666;
+        font-size: 0.85rem;
+    }
+
+    .test-account-title {
+        color: #1a5276;
+        font-weight: 500;
+        margin-bottom: 5px;
+    }
+
+    .test-account table {
+        color: #333;
+        font-size: 0.8rem;
+        margin-top: 6px;
+        width: 100%;
+        border-collapse: collapse;
+    }
+
+    .test-account th,
+    .test-account td {
+        padding: 8px;
+        border: 1px solid #ddd;
+    }
+
+    .test-account th {
+        background: #f5f5f5;
+    }
+</style>
+{% endblock %}
+
+{% block fullpage_content %}
+<div class="login-page">
+    <!-- 顶部标题区域 -->
+    <div class="login-header">
+        <img src="/logo.png" alt="林德" class="login-header-logo">
+        <div class="login-header-text">
+            <h1 class="login-header-title">林德亚太知识库系统</h1>
+            <p class="login-header-subtitle">Asia-Pacific Knowledge Base System</p>
+        </div>
+    </div>
+
+    <!-- 主内容区域 -->
+    <div class="login-main">
+        <!-- 登录卡片 -->
+        <div class="login-card">
+            <h2 class="login-card-title">登录</h2>
+
+            {% if error %}
+            <div class="alert alert-error">{{ error }}</div>
+            {% endif %}
+
+            {% if warning %}
+            <div class="alert alert-warning">{{ warning }}</div>
+            {% endif %}
+
+            <form id="loginForm" action="/api/login-form" method="POST">
+                <div class="form-group">
+                    <div class="form-input-wrapper">
+                        <span class="form-input-icon">👤</span>
+                        <input type="text" name="username" class="form-input" placeholder="用户名" required>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <div class="form-input-wrapper">
+                        <span class="form-input-icon">🔒</span>
+                        <input type="password" name="password" class="form-input" placeholder="密码" required>
+                    </div>
+                </div>
+
+                <div class="remember-row">
+                    <input type="checkbox" id="remember" name="remember">
+                    <label for="remember">记住密码</label>
+                </div>
+
+                <button type="submit" class="btn-login">登录</button>
+            </form>
+
+            <div class="login-links">
+                <a href="#">忘记密码？</a>
+                <span class="divider">|</span>
+                <a href="#">注册账号</a>
+            </div>
+
+            <div class="test-account">
+                <table>
+                    <tr>
+                        <th>用户名</th>
+                        <th>密码</th>
+                        <th>角色</th>
+                    </tr>
+                    <tr>
+                        <td>admin</td>
+                        <td>123456</td>
+                        <td>管理员</td>
+                    </tr>
+                </table>
+            </div>
+        </div>
+
+        <!-- 右侧功能图标 -->
+        <div class="feature-icons">
+            <!-- 知识库图标 -->
+            <div class="feature-icon-item" title="知识库">
+                <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                    <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/>
+                </svg>
+            </div>
+            <!-- 搜索图标 -->
+            <div class="feature-icon-item" title="智能搜索">
+                <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                    <circle cx="11" cy="11" r="8"/>
+                    <path d="m21 21-4.35-4.35"/>
+                </svg>
+            </div>
+            <!-- 网络图标 -->
+            <div class="feature-icon-item" title="全球网络">
+                <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                    <circle cx="12" cy="12" r="10"/>
+                    <path d="M2 12h20M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/>
+                </svg>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

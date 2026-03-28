@@ -1,0 +1,954 @@
+{% extends "base.html" %}
+
+{% block title %}知识搜索 - {{ app_name }}{% endblock %}
+
+{% block extra_css %}
+<style>
+    /* 搜索页面专用样式 */
+    .search-container {
+        max-width: 1400px;
+        margin: 0 auto;
+    }
+    
+    /* 搜索头部区域 */
+    .search-header {
+        background: white;
+        border-radius: 12px;
+        padding: 1.5rem 2rem;
+        box-shadow: 0 2px 12px rgba(0,0,0,0.08);
+        margin-bottom: 1rem;
+    }
+    
+    .search-title {
+        font-size: 1.5rem;
+        color: #333;
+        margin-bottom: 1rem;
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+    }
+    
+    /* 搜索框区域 */
+    .search-box-wrapper {
+        display: flex;
+        gap: 1rem;
+        margin-bottom: 1rem;
+    }
+    
+    .search-input-group {
+        flex: 1;
+        position: relative;
+    }
+    
+    .search-input {
+        width: 100%;
+        padding: 0.875rem 1rem;
+        padding-left: 2.5rem;
+        border: 2px solid #e0e0e0;
+        border-radius: 8px;
+        font-size: 0.95rem;
+        transition: all 0.3s;
+    }
+    
+    .search-input:focus {
+        outline: none;
+        border-color: #667eea;
+        box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+    }
+    
+    .search-icon {
+        position: absolute;
+        left: 0.75rem;
+        top: 50%;
+        transform: translateY(-50%);
+        font-size: 1rem;
+        color: #999;
+    }
+    
+    .btn-search {
+        padding: 0.875rem 1.5rem;
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        border: none;
+        border-radius: 8px;
+        font-size: 0.95rem;
+        cursor: pointer;
+        transition: all 0.3s;
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        min-width: 100px;
+        justify-content: center;
+    }
+    
+    .btn-search:hover {
+        transform: translateY(-1px);
+        box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+    }
+    
+    .btn-search:disabled {
+        opacity: 0.6;
+        cursor: not-allowed;
+        transform: none;
+    }
+    
+    /* 筛选条件 */
+    .filter-section {
+        display: flex;
+        gap: 1rem;
+        flex-wrap: wrap;
+        align-items: center;
+    }
+    
+    .filter-item {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+    }
+    
+    .filter-label {
+        font-size: 0.85rem;
+        color: #666;
+        white-space: nowrap;
+    }
+    
+    .filter-select {
+        padding: 0.5rem 0.75rem;
+        border: 1px solid #ddd;
+        border-radius: 6px;
+        font-size: 0.85rem;
+        background: white;
+        cursor: pointer;
+    }
+    
+    .filter-select:focus {
+        outline: none;
+        border-color: #667eea;
+    }
+    
+    /* 双栏布局 */
+    .search-results-layout {
+        display: flex;
+        gap: 1rem;
+        min-height: 500px;
+    }
+    
+    /* 左侧文档列表 */
+    .documents-sidebar {
+        width: 320px;
+        background: white;
+        border-radius: 12px;
+        box-shadow: 0 2px 12px rgba(0,0,0,0.08);
+        display: flex;
+        flex-direction: column;
+        overflow: hidden;
+    }
+    
+    .search-sidebar-header {
+        padding: 1rem 1.25rem;
+        border-bottom: 1px solid #eee;
+        background: #f8f9fa;
+    }
+    
+    .search-sidebar-title {
+        font-size: 1rem;
+        font-weight: 600;
+        color: #333;
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+    }
+    
+    .search-sidebar-subtitle {
+        font-size: 0.85rem;
+        color: #888;
+        margin-top: 0.25rem;
+    }
+    
+    .documents-list {
+        flex: 1;
+        overflow-y: auto;
+        padding: 0.5rem;
+    }
+    
+    .document-item {
+        padding: 0.875rem 1rem;
+        border-radius: 8px;
+        cursor: pointer;
+        transition: all 0.2s;
+        margin-bottom: 0.5rem;
+        border: 1px solid transparent;
+    }
+    
+    .document-item:hover {
+        background: #f0f4ff;
+        border-color: #d0d8f0;
+    }
+    
+    .document-item.active {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        border-color: transparent;
+    }
+    
+    .document-item.active .document-name,
+    .document-item.active .document-meta {
+        color: white;
+    }
+    
+    .document-name {
+        font-size: 1rem;
+        font-weight: 500;
+        color: #333;
+        margin-bottom: 0.25rem;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+    
+    .document-meta {
+        font-size: 0.85rem;
+        color: #888;
+        display: flex;
+        gap: 0.75rem;
+    }
+    
+    .document-chunk-count {
+        background: rgba(102, 126, 234, 0.1);
+        color: #667eea;
+        padding: 0.125rem 0.375rem;
+        border-radius: 10px;
+        font-size: 0.75rem;
+    }
+    
+    .document-item.active .document-chunk-count {
+        background: rgba(255, 255, 255, 0.2);
+        color: white;
+    }
+    
+    /* 右侧 chunks 区域 */
+    .chunks-content {
+        flex: 1;
+        background: white;
+        border-radius: 12px;
+        box-shadow: 0 2px 12px rgba(0,0,0,0.08);
+        display: flex;
+        flex-direction: column;
+        overflow: hidden;
+    }
+    
+    .chunks-header {
+        padding: 1rem 1.5rem;
+        border-bottom: 1px solid #eee;
+        background: #f8f9fa;
+    }
+    
+    .chunks-title {
+        font-size: 1rem;
+        font-weight: 600;
+        color: #333;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+    }
+    
+    .chunks-count {
+        font-size: 0.85rem;
+        color: #667eea;
+        background: rgba(102, 126, 234, 0.1);
+        padding: 0.25rem 0.625rem;
+        border-radius: 10px;
+    }
+    
+    .chunks-list {
+        flex: 1;
+        overflow-y: auto;
+        padding: 1rem 1.5rem;
+    }
+    
+    /* 结果卡片 */
+    .chunk-card {
+        background: #f8f9fa;
+        border-radius: 10px;
+        padding: 1.25rem;
+        margin-bottom: 1rem;
+        border-left: 3px solid #667eea;
+        transition: all 0.2s;
+    }
+    
+    .chunk-card:hover {
+        background: #f0f4ff;
+        transform: translateX(4px);
+    }
+    
+    .chunk-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 0.75rem;
+    }
+    
+    .chunk-position {
+        font-size: 0.85rem;
+        color: #666;
+        background: white;
+        padding: 0.25rem 0.5rem;
+        border-radius: 4px;
+    }
+    
+    .chunk-similarity {
+        display: flex;
+        align-items: center;
+        gap: 0.25rem;
+        font-size: 0.95rem;
+    }
+    
+    .similarity-label {
+        color: #666;
+    }
+    
+    .similarity-value {
+        font-weight: 600;
+        color: #667eea;
+    }
+    
+    .chunk-content {
+        color: #444;
+        line-height: 1.7;
+        font-size: 0.95rem;
+        max-height: 150px;
+        overflow-y: auto;
+    }
+    
+    .chunk-content .highlight {
+        background: rgba(255, 220, 100, 0.5);
+        padding: 0 2px;
+        border-radius: 2px;
+        font-weight: 500;
+    }
+    
+    .chunk-footer {
+        margin-top: 0.75rem;
+        padding-top: 0.75rem;
+        border-top: 1px solid #e0e0e0;
+        font-size: 0.85rem;
+        color: #888;
+    }
+    
+    /* 加载状态 */
+    .loading-state {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        padding: 4rem 2rem;
+        height: 100%;
+    }
+    
+    .spinner {
+        width: 40px;
+        height: 40px;
+        border: 3px solid #f0f0f0;
+        border-top-color: #667eea;
+        border-radius: 50%;
+        animation: spin 1s linear infinite;
+    }
+    
+    @keyframes spin {
+        to { transform: rotate(360deg); }
+    }
+    
+    .loading-text {
+        margin-top: 1rem;
+        color: #666;
+        font-size: 0.95rem;
+    }
+    
+    /* 空状态 */
+    .empty-state {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        padding: 4rem 2rem;
+        height: 100%;
+        text-align: center;
+    }
+    
+    .empty-icon {
+        font-size: 3.5rem;
+        margin-bottom: 1rem;
+    }
+    
+    .empty-title {
+        font-size: 1.125rem;
+        color: #333;
+        margin-bottom: 0.5rem;
+    }
+    
+    .empty-desc {
+        color: #888;
+        font-size: 0.85rem;
+    }
+    
+    /* 错误提示 */
+    .error-message {
+        background: #f8d7da;
+        color: #721c24;
+        padding: 1rem;
+        border-radius: 8px;
+        margin: 1rem;
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+    }
+    
+    /* 分页 */
+    .pagination {
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        gap: 0.375rem;
+        padding: 1rem;
+        border-top: 1px solid #eee;
+    }
+    
+    .pagination-btn {
+        padding: 0.375rem 0.75rem;
+        border: 1px solid #ddd;
+        background: white;
+        border-radius: 6px;
+        cursor: pointer;
+        font-size: 0.95rem;
+        transition: all 0.2s;
+        min-width: 32px;
+    }
+    
+    .pagination-btn:hover:not(:disabled) {
+        background: #f0f0f0;
+        border-color: #667eea;
+        color: #667eea;
+    }
+    
+    .pagination-btn:disabled {
+        opacity: 0.5;
+        cursor: not-allowed;
+    }
+    
+    .pagination-btn.active {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        border-color: transparent;
+    }
+    
+    /* 统一结果显示区域 */
+    .search-unified-result {
+        background: white;
+        border-radius: 12px;
+        box-shadow: 0 2px 12px rgba(0,0,0,0.08);
+        min-height: 400px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+    
+    /* Chunk 图片样式 */
+    .chunk-image-wrapper {
+        margin: 0.75rem 0;
+        border-radius: 8px;
+        overflow: hidden;
+        border: 1px solid #e0e0e0;
+        background: #f8f9fa;
+    }
+    
+    .chunk-image {
+        max-width: 50%;
+        max-height: 200px;
+        width: auto;
+        height: auto;
+        display: block;
+        margin: 0 auto;
+        object-fit: contain;
+    }
+    
+    .chunk-image:hover {
+        cursor: zoom-in;
+    }
+    
+    /* 图片放大模态框 */
+    .image-modal {
+        display: none;
+        position: fixed;
+        z-index: 2000;
+        left: 0;
+        top: 0;
+        width: 100%;
+        height: 100%;
+        background-color: rgba(0, 0, 0, 0.9);
+        justify-content: center;
+        align-items: center;
+    }
+    
+    .image-modal.active {
+        display: flex;
+    }
+    
+    .image-modal-content {
+        max-width: 90%;
+        max-height: 90%;
+        object-fit: contain;
+        animation: zoomIn 0.3s ease;
+    }
+    
+    @keyframes zoomIn {
+        from { transform: scale(0.8); opacity: 0; }
+        to { transform: scale(1); opacity: 1; }
+    }
+    
+    .image-modal-close {
+        position: absolute;
+        top: 20px;
+        right: 40px;
+        color: #fff;
+        font-size: 40px;
+        font-weight: bold;
+        cursor: pointer;
+        transition: color 0.3s;
+    }
+    
+    .image-modal-close:hover {
+        color: #bbb;
+    }
+    
+    /* 文档下载链接 */
+    .document-download {
+        margin-top: 0.5rem;
+        font-size: 0.85rem;
+    }
+    
+    .document-download a {
+        color: #667eea;
+        text-decoration: none;
+        display: inline-flex;
+        align-items: center;
+        gap: 0.25rem;
+        transition: color 0.2s;
+    }
+    
+    .document-download a:hover {
+        color: #764ba2;
+        text-decoration: underline;
+    }
+    
+    .document-item.active .document-download a {
+        color: rgba(255, 255, 255, 0.9);
+    }
+    
+    .document-item.active .document-download a:hover {
+        color: #fff;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="search-container">
+    <!-- 搜索头部 -->
+    <div class="search-header">
+        <!-- <div class="search-title">
+            🔍 知识库搜索
+        </div> -->
+        <h2 class="page-title">🔍 知识库搜索</h2>
+        
+        <div class="search-box-wrapper">
+            <div class="search-input-group">
+                <span class="search-icon">🔍</span>
+                <input type="text" id="searchInput" class="search-input" placeholder="输入关键词搜索知识库内容..." value="{{ keyword or '' }}">
+            </div>
+            <button class="btn-search" id="searchBtn" onclick="performSearch()">
+                <span>搜索</span>
+            </button>
+        </div>
+        
+        <!-- 筛选条件已移除：知识库、相似度 -->
+    </div>
+    
+    <!-- 统一结果显示区域（未搜索/无结果时显示） -->
+    <div class="search-unified-result" id="unifiedResult">
+        <div class="empty-state" style="padding: 3rem 2rem;">
+            <div class="empty-icon">📚</div>
+            <div class="empty-title">开始搜索</div>
+            <div class="empty-desc">输入关键词查找知识库内容</div>
+        </div>
+    </div>
+
+    <!-- 双栏搜索结果区域（有结果时显示） -->
+    <div class="search-results-layout" id="resultsLayout" style="display: none;">
+        <!-- 左侧文档列表 -->
+        <div class="documents-sidebar">
+            <div class="search-sidebar-header">
+                <div class="search-sidebar-title">
+                    📄 相关文档
+                </div>
+                <div class="search-sidebar-subtitle" id="docCountSubtitle">
+                    找到 0 个相关文档
+                </div>
+            </div>
+            <div class="documents-list" id="documentsList">
+                <!-- 文档列表内容 -->
+            </div>
+        </div>
+        
+        <!-- 右侧 chunks 区域 -->
+        <div class="chunks-content">
+            <div class="chunks-header">
+                <div class="chunks-title">
+                    <span id="chunksTitle">内容片段</span>
+                    <span class="chunks-count" id="chunksCount" style="display: none;">0 个片段</span>
+                </div>
+            </div>
+            <div class="chunks-list" id="chunksList">
+                <!-- chunks 内容 -->
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- 图片放大模态框 -->
+<div id="imageModal" class="image-modal" onclick="closeImageModal()">
+    <span class="image-modal-close">&times;</span>
+    <img id="modalImage" class="image-modal-content" src="" alt="放大图片">
+</div>
+{% endblock %}
+
+{% block extra_js %}
+let currentKeyword = '';
+let isLoading = false;
+let searchResults = {}; // 存储搜索结果
+let selectedDocId = null;
+
+// 页面加载完成后绑定事件
+document.addEventListener('DOMContentLoaded', function() {
+    // 绑定回车搜索
+    document.getElementById('searchInput').addEventListener('keypress', function(e) {
+        if (e.key === 'Enter') {
+            performSearch();
+        }
+    });
+});
+
+// 执行搜索
+async function performSearch() {
+    const keyword = document.getElementById('searchInput').value.trim();
+    if (!keyword) {
+        showInitialState();
+        return;
+    }
+    
+    currentKeyword = keyword;
+    isLoading = true;
+    selectedDocId = null;
+    
+    // 默认相似度阈值
+    const similarity = 0.6;
+    
+    // 显示加载状态
+    showLoadingState();
+    
+    try {
+        const params = new URLSearchParams({
+            keyword: keyword,
+            page: 1,
+            page_size: 100,
+            similarity: similarity
+        });
+        
+        const response = await fetch('/api/search-chunks?' + params.toString());
+        const data = await response.json();
+        
+        if (data.success) {
+            if (data.chunks && data.chunks.length > 0) {
+                // 按文档分组
+                groupChunksByDocument(data.chunks);
+                // 显示文档列表
+                renderDocumentsList();
+                // 默认选中第一个文档
+                selectFirstDocument();
+            } else {
+                showNoResultsState();
+            }
+        } else {
+            showError(data.message || '搜索失败，请稍后重试');
+        }
+    } catch (error) {
+        console.error('Search error:', error);
+        showError('搜索出错，请检查网络连接后重试');
+    } finally {
+        isLoading = false;
+    }
+}
+
+// 按文档分组 chunks
+function groupChunksByDocument(chunks) {
+    searchResults = {};
+    
+    chunks.forEach(chunk => {
+        const docId = chunk.document_id;
+        if (!searchResults[docId]) {
+            searchResults[docId] = {
+                document_id: docId,
+                document_name: chunk.document_name,
+                dataset_id: chunk.dataset_id,
+                dataset_name: chunk.dataset_name,
+                chunks: []
+            };
+        }
+        searchResults[docId].chunks.push(chunk);
+    });
+    
+    // 每个文档内的 chunks 按相似度排序
+    Object.values(searchResults).forEach(doc => {
+        doc.chunks.sort((a, b) => b.similarity - a.similarity);
+        doc.highest_similarity = doc.chunks[0].similarity;
+    });
+}
+
+// 渲染文档列表
+function renderDocumentsList() {
+    // 有结果时，显示双栏布局，隐藏统一结果区域
+    document.getElementById('unifiedResult').style.display = 'none';
+    document.getElementById('resultsLayout').style.display = 'flex';
+    
+    const container = document.getElementById('documentsList');
+    const docCount = Object.keys(searchResults).length;
+    
+    document.getElementById('docCountSubtitle').textContent = '找到 ' + docCount + ' 个相关文档';
+    
+    let html = '';
+    Object.values(searchResults).forEach((doc, index) => {
+        const chunkCount = doc.chunks.length;
+        const similarityPercent = (doc.highest_similarity * 100).toFixed(0);
+        const isFirst = index === 0;
+        const downloadUrl = `/api/document-download?document_id=${encodeURIComponent(doc.document_id)}&dataset_id=${encodeURIComponent(doc.dataset_id)}`;
+        
+        html += `
+            <div class="document-item ${isFirst ? 'active' : ''}" 
+                 data-doc-id="${doc.document_id}"
+                 onclick="selectDocument('${doc.document_id}')">
+                <div class="document-name">${escapeHtml(doc.document_name)}</div>
+                <div class="document-meta">
+                    <span class="document-chunk-count">${chunkCount} 个片段</span>
+                    <span>最高相似度 ${similarityPercent}%</span>
+                </div>
+                <div class="document-download">
+                    <a href="${downloadUrl}" onclick="event.stopPropagation();" title="下载文档">
+                        📥 下载文档
+                    </a>
+                </div>
+            </div>
+        `;
+    });
+    
+    container.innerHTML = html;
+}
+
+// 选中第一个文档
+function selectFirstDocument() {
+    const firstDoc = Object.values(searchResults)[0];
+    if (firstDoc) {
+        selectDocument(firstDoc.document_id);
+    }
+}
+
+// 选中文档
+function selectDocument(docId) {
+    selectedDocId = docId;
+    
+    // 更新文档列表选中状态
+    document.querySelectorAll('.document-item').forEach(item => {
+        if (item.dataset.docId === docId) {
+            item.classList.add('active');
+        } else {
+            item.classList.remove('active');
+        }
+    });
+    
+    // 渲染该文档的 chunks
+    renderChunks(docId);
+}
+
+// 渲染 chunks
+function renderChunks(docId) {
+    const doc = searchResults[docId];
+    if (!doc) return;
+    
+    const container = document.getElementById('chunksList');
+    const titleEl = document.getElementById('chunksTitle');
+    const countEl = document.getElementById('chunksCount');
+    
+    titleEl.textContent = escapeHtml(doc.document_name);
+    countEl.textContent = doc.chunks.length + ' 个片段';
+    countEl.style.display = 'inline';
+    
+    let html = '';
+    doc.chunks.forEach((chunk, index) => {
+        const similarityPercent = (chunk.similarity * 100).toFixed(1);
+        
+        // 如果有图片，生成图片 HTML
+        let imageHtml = '';
+        if (chunk.image_id) {
+            const imageUrl = `/api/chunk-image?image_id=${encodeURIComponent(chunk.image_id)}`;
+            imageHtml = `
+                <div class="chunk-image-wrapper">
+                    <img src="${imageUrl}" 
+                         alt="片段图片" 
+                         class="chunk-image"
+                         onclick="openImageModal('${imageUrl}')"
+                         onerror="this.style.display='none'"
+                         title="点击放大图片">
+                </div>
+            `;
+        }
+        
+        html += `
+            <div class="chunk-card">
+                <div class="chunk-header">
+                    <span class="chunk-position">片段 ${index + 1}</span>
+                    <div class="chunk-similarity">
+                        <span class="similarity-label">相似度:</span>
+                        <span class="similarity-value">${similarityPercent}%</span>
+                    </div>
+                </div>
+                ${imageHtml}
+                <div class="chunk-content">
+                    ${highlightKeywords(chunk.content, currentKeyword)}
+                </div>
+                <div class="chunk-footer">
+                    字数: ${chunk.content_length || chunk.content.length} | 
+                    位置: ${chunk.position || '-'} |
+                    知识库: ${escapeHtml(chunk.dataset_name || doc.dataset_name || '默认知识库')}
+                </div>
+            </div>
+        `;
+    });
+    
+    container.innerHTML = html;
+}
+
+// 显示初始状态
+function showInitialState() {
+    // 显示统一结果区域，隐藏双栏布局
+    document.getElementById('unifiedResult').style.display = 'flex';
+    document.getElementById('resultsLayout').style.display = 'none';
+    
+    // 设置初始状态内容
+    document.getElementById('unifiedResult').innerHTML = `
+        <div class="empty-state" style="padding: 3rem 2rem;">
+            <div class="empty-icon">📚</div>
+            <div class="empty-title">开始搜索</div>
+            <div class="empty-desc">输入关键词查找知识库内容</div>
+        </div>
+    `;
+    
+    searchResults = {};
+    selectedDocId = null;
+}
+
+// 显示加载状态
+function showLoadingState() {
+    // 显示统一结果区域，隐藏双栏布局
+    document.getElementById('unifiedResult').style.display = 'flex';
+    document.getElementById('resultsLayout').style.display = 'none';
+    
+    // 设置加载状态内容
+    document.getElementById('unifiedResult').innerHTML = `
+        <div class="loading-state" style="padding: 3rem 2rem;">
+            <div class="spinner"></div>
+            <div class="loading-text">搜索中...</div>
+        </div>
+    `;
+}
+
+// 显示无结果状态
+function showNoResultsState() {
+    // 显示统一结果区域，隐藏双栏布局
+    document.getElementById('unifiedResult').style.display = 'flex';
+    document.getElementById('resultsLayout').style.display = 'none';
+    
+    // 设置无结果状态内容
+    document.getElementById('unifiedResult').innerHTML = `
+        <div class="empty-state" style="padding: 3rem 2rem;">
+            <div class="empty-icon">🔍</div>
+            <div class="empty-title">无搜索结果</div>
+            <div class="empty-desc">尝试其他关键词或调整筛选条件</div>
+        </div>
+    `;
+}
+
+// 显示错误
+function showError(message) {
+    // 显示统一结果区域，隐藏双栏布局
+    document.getElementById('unifiedResult').style.display = 'flex';
+    document.getElementById('resultsLayout').style.display = 'none';
+    
+    // 设置错误状态内容
+    document.getElementById('unifiedResult').innerHTML = `
+        <div class="error-message" style="padding: 3rem 2rem; text-align: center;">
+            <div style="font-size: 3rem; margin-bottom: 1rem;">⚠️</div>
+            <div style="font-size: 1.125rem; color: #dc3545; margin-bottom: 0.5rem;">搜索出错</div>
+            <div style="color: #666;">${message}</div>
+        </div>
+    `;
+}
+
+// HTML 转义
+function escapeHtml(text) {
+    if (!text) return '';
+    const div = document.createElement('div');
+    div.textContent = text;
+    return div.innerHTML;
+}
+
+// 高亮关键词
+function highlightKeywords(content, keyword) {
+    if (!keyword || !content) return escapeHtml(content);
+    
+    const keywords = keyword.split(/\s+/).filter(k => k.length > 0);
+    let result = escapeHtml(content);
+    
+    keywords.forEach(kw => {
+        const pattern = '(' + escapeRegExp(kw) + ')';
+        const regex = new RegExp(pattern, 'gi');
+        result = result.replace(regex, '<span class="highlight">$1</span>');
+    });
+    
+    return result;
+}
+
+// 转义正则特殊字符
+function escapeRegExp(string) {
+    return string.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+
+// 打开图片模态框
+function openImageModal(imageUrl) {
+    const modal = document.getElementById('imageModal');
+    const modalImg = document.getElementById('modalImage');
+    modalImg.src = imageUrl;
+    modal.classList.add('active');
+    document.body.style.overflow = 'hidden'; // 禁止背景滚动
+}
+
+// 关闭图片模态框
+function closeImageModal() {
+    const modal = document.getElementById('imageModal');
+    modal.classList.remove('active');
+    document.body.style.overflow = ''; // 恢复背景滚动
+}
+
+// ESC键关闭模态框
+document.addEventListener('keydown', function(e) {
+    if (e.key === 'Escape') {
+        closeImageModal();
+    }
+});
+{% endblock %}

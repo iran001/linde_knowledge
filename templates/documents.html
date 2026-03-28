@@ -1,0 +1,483 @@
+{% extends "base.html" %}
+
+{% block title %}{{ page_title }} - {{ app_name }}{% endblock %}
+
+{% block extra_css %}
+<style>
+    .search-bar {
+        display: flex;
+        gap: 10px;
+        margin-bottom: 20px;
+        align-items: flex-end;
+    }
+    
+    .search-input {
+        flex: 1;
+        max-width: 400px;
+    }
+    
+    .search-input input {
+        width: 100%;
+        padding: 0.6rem 1rem;
+        border: 1px solid #ddd;
+        border-radius: 6px;
+        font-size: 0.95rem;
+    }
+    
+    .stats-bar {
+        margin-bottom: 20px;
+    }
+    
+    .stat-item {
+        display: inline-block;
+        padding: 0.5rem 1rem;
+        border-radius: 20px;
+        font-size: 0.95rem;
+        margin-right: 10px;
+    }
+    
+    .stat-blue {
+        background: #e3f2fd;
+        color: #1565c0;
+    }
+    
+    .stat-purple {
+        background: #f3e5f5;
+        color: #7b1fa2;
+    }
+    
+    .document-list {
+        display: flex;
+        flex-direction: column;
+        gap: 10px;
+    }
+    
+    .document-item {
+        background: white;
+        border-radius: 8px;
+        padding: 1rem;
+        box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+        cursor: pointer;
+        transition: all 0.3s;
+    }
+    
+    .document-item:hover {
+        box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    }
+    
+    .doc-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 0.5rem;
+    }
+    
+    .doc-title {
+        font-size: 1.125rem;
+        font-weight: 500;
+        color: #333;
+    }
+    
+    .doc-meta {
+        display: flex;
+        gap: 15px;
+        font-size: 0.85rem;
+        color: #666;
+        flex-wrap: wrap;
+    }
+    
+    .doc-summary {
+        color: #666;
+        font-size: 0.95rem;
+        margin-top: 0.5rem;
+    }
+    
+    .empty-state {
+        text-align: center;
+        padding: 3rem;
+        color: #666;
+    }
+    
+    .admin-link {
+        margin-bottom: 20px;
+    }
+    
+    /* 加载状态 */
+    .loading-state {
+        text-align: center;
+        padding: 3rem;
+        color: #666;
+    }
+    
+    .loading-spinner {
+        display: inline-block;
+        width: 40px;
+        height: 40px;
+        border: 3px solid #e5e7eb;
+        border-top-color: #1C64F2;
+        border-radius: 50%;
+        animation: spin 1s linear infinite;
+        margin-bottom: 1rem;
+    }
+    
+    @keyframes spin {
+        to { transform: rotate(360deg); }
+    }
+    
+    /* 错误状态 */
+    .error-state {
+        text-align: center;
+        padding: 3rem;
+        color: #dc2626;
+    }
+    
+    /* 分页样式 */
+    .pagination {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 15px;
+        margin-top: 30px;
+        padding: 20px;
+    }
+    
+    .pagination-info {
+        color: #666;
+        font-size: 0.95rem;
+    }
+    
+    .pagination-buttons {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        flex-wrap: wrap;
+        justify-content: center;
+    }
+    
+    .page-number {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        min-width: 36px;
+        height: 36px;
+        padding: 0 12px;
+        border-radius: 6px;
+        text-decoration: none;
+        color: #374151;
+        background: #f3f4f6;
+        border: 1px solid #e5e7eb;
+        font-size: 0.95rem;
+        transition: all 0.2s;
+        cursor: pointer;
+    }
+    
+    .page-number:hover {
+        background: #e5e7eb;
+        border-color: #d1d5db;
+    }
+    
+    .page-number.active {
+        background: #1C64F2;
+        color: white;
+        border-color: #1C64F2;
+    }
+    
+    .page-number:disabled {
+        opacity: 0.5;
+        cursor: not-allowed;
+    }
+    
+    .page-ellipsis {
+        color: #9ca3af;
+        padding: 0 8px;
+    }
+    
+    .pagination-buttons .btn:disabled {
+        opacity: 0.5;
+        cursor: not-allowed;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<h2 class="page-title">📄 {{ page_title }}</h2>
+
+<!-- 搜索栏 -->
+<div class="search-bar">
+    <div class="search-input">
+        <input type="text" id="searchInput" placeholder="输入关键词搜索文档...">
+    </div>
+    <button onclick="searchDocuments()" class="btn btn-secondary">🔍 搜索</button>
+    {% if user.role == 'admin' %}
+    <a href="/page/knowledge-upload" class="btn btn-secondary">📤 文件上传</a>
+    {% endif %}
+</div>
+
+<!-- 统计信息 -->
+<div class="stats-bar">
+    <span class="stat-item stat-blue">共找到 <strong id="totalCount">0</strong> 个文档</span>
+    <span class="stat-item stat-purple" id="visiblePermission">权限级别: 加载中...</span>
+</div>
+
+<!-- 文档列表容器 -->
+<div id="documentsContainer">
+    <div class="loading-state">
+        <div class="loading-spinner"></div>
+        <p>正在加载文档...</p>
+    </div>
+</div>
+
+<!-- 分页控件容器 -->
+<div id="paginationContainer"></div>
+{% endblock %}
+
+{% block extra_js %}
+{{ super() }}
+    // 当前状态
+    let currentState = {
+        keyword: '',
+        currentPage: 1,
+        pageSize: 10,
+        totalCount: 0,
+        totalPages: 1,
+        documents: []
+    };
+
+    // 页面加载完成后获取数据
+    document.addEventListener('DOMContentLoaded', function() {
+        loadDocuments();
+        
+        // 绑定回车键搜索
+        document.getElementById('searchInput').addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') {
+                searchDocuments();
+            }
+        });
+    });
+
+    // 搜索文档
+    function searchDocuments() {
+        const keyword = document.getElementById('searchInput').value.trim();
+        currentState.keyword = keyword;
+        currentState.currentPage = 1;
+        loadDocuments();
+    }
+
+    // 加载文档数据
+    async function loadDocuments() {
+        showLoading();
+        
+        try {
+            const params = new URLSearchParams({
+                keyword: currentState.keyword,
+                page: currentState.currentPage,
+                page_size: currentState.pageSize
+            });
+            
+            const response = await fetch(`/api/documents?${params}`, {
+                method: 'GET',
+                credentials: 'same-origin',
+                headers: {
+                    'Accept': 'application/json'
+                }
+            });
+            
+            if (!response.ok) {
+                throw new Error(`HTTP error! status: ${response.status}`);
+            }
+            
+            const data = await response.json();
+            
+            if (data.success) {
+                currentState.documents = data.documents || [];
+                currentState.totalCount = data.total_count || 0;
+                currentState.totalPages = data.total_pages || 1;
+                currentState.currentPage = data.current_page || 1;
+                
+                updateStats(data);
+                renderDocuments();
+                renderPagination();
+            } else {
+                showError('加载文档失败: ' + (data.message || '未知错误'));
+            }
+        } catch (error) {
+            console.error('Error loading documents:', error);
+            showError('加载文档失败，请稍后重试');
+        }
+    }
+
+    // 显示加载状态
+    function showLoading() {
+        document.getElementById('documentsContainer').innerHTML =
+            '<div class="loading-state">' +
+                '<div class="loading-spinner"></div>' +
+                '<p>正在加载文档...</p>' +
+            '</div>';
+    }
+
+    // 显示错误状态
+    function showError(message) {
+        document.getElementById('documentsContainer').innerHTML =
+            '<div class="error-state">' +
+                '<p>❌ ' + escapeHtml(message) + '</p>' +
+                '<button onclick="loadDocuments()" class="btn btn-secondary" style="margin-top: 1rem;">重新加载</button>' +
+            '</div>';
+    }
+
+    // 更新统计信息
+    function updateStats(data) {
+        document.getElementById('totalCount').textContent = data.total_count || 0;
+        document.getElementById('visiblePermission').textContent = '权限级别: ' + (data.visible_permission || '未知');
+    }
+
+    // HTML 转义函数
+    function escapeHtml(text) {
+        if (!text) return '';
+        const div = document.createElement('div');
+        div.textContent = text;
+        return div.innerHTML;
+    }
+
+    // 渲染文档列表
+    function renderDocuments() {
+        const container = document.getElementById('documentsContainer');
+        
+        if (!currentState.documents || currentState.documents.length === 0) {
+            container.innerHTML = `
+                <div class="empty-state">
+                    <p>📭 没有找到符合条件的文档</p>
+                </div>
+            `;
+            return;
+        }
+        
+        let html = '<div class="document-list">';
+        
+        currentState.documents.forEach((doc, index) => {
+            
+            const content = doc.content || '暂无描述';
+            const contentPreview = content.length > 150 ? content.substring(0, 150) + '...' : content;
+            
+            // 使用 data 属性存储 doc id，避免 onclick 中的引号问题
+            html += '<div class="document-item" data-doc-index="' + index + '">' +
+                '<div class="doc-header">' +
+                    '<span class="doc-title">📄 ' + escapeHtml(doc.title || '未命名文档') + '</span>' +
+                '</div>' +
+                '<div class="doc-meta">' +
+                    '<span>类型: ' + escapeHtml(doc.type || '未知') + '</span>' +
+                    '<span>更新日期: ' + escapeHtml(doc.updated_at || '未知') + '</span>' +
+                    (doc.chunk_count !== undefined ? '<span>分块数: ' + doc.chunk_count + '</span>' : '') +
+                    (doc.token_count !== undefined ? '<span>Token数: ' + doc.token_count + '</span>' : '') +
+                    (doc.progress !== undefined ? '<span>解析进度: ' + (doc.progress * 100).toFixed(2) + '%</span>' : '') +
+                '</div>' +
+                '<div class="doc-summary">' + escapeHtml(contentPreview) + '</div>' +
+                '<div class="doc-detail" id="detail-' + index + '" style="display: none; margin-top: 10px; padding-top: 10px; border-top: 1px solid #eee;">' +
+                    '<p><strong>完整内容:</strong></p>' +
+                    '<p>' + escapeHtml(content) + '</p>' +
+                    (doc.progress_msg ? '<p><strong>处理状态:</strong> ' + escapeHtml(doc.progress_msg) + '</p>' : '') +
+                '</div>' +
+            '</div>';
+        });
+        
+        html += '</div>';
+        container.innerHTML = html;
+        
+        // 绑定点击事件
+        container.querySelectorAll('.document-item').forEach(item => {
+            item.addEventListener('click', function() {
+                const index = this.getAttribute('data-doc-index');
+                toggleDetail(index);
+            });
+        });
+    }
+
+    // 渲染分页控件
+    function renderPagination() {
+        const container = document.getElementById('paginationContainer');
+        
+        if (currentState.totalPages <= 1) {
+            container.innerHTML = '';
+            return;
+        }
+        
+        let html = '<div class="pagination">' +
+            '<div class="pagination-info">' +
+                '共 ' + currentState.totalCount + ' 条记录，第 ' + currentState.currentPage + ' / ' + currentState.totalPages + ' 页' +
+            '</div>' +
+            '<div class="pagination-buttons" id="paginationButtons">';
+        
+        // 上一页按钮
+        if (currentState.currentPage > 1) {
+            html += '<button class="btn btn-secondary btn-prev">← 上一页</button>';
+        } else {
+            html += '<button class="btn btn-secondary" disabled>← 上一页</button>';
+        }
+        
+        // 页码
+        for (let p = 1; p <= currentState.totalPages; p++) {
+            if (p === currentState.currentPage) {
+                html += '<span class="page-number active">' + p + '</span>';
+            } else if (p <= 3 || p > currentState.totalPages - 3 || (p >= currentState.currentPage - 1 && p <= currentState.currentPage + 1)) {
+                html += '<button class="page-number" data-page="' + p + '">' + p + '</button>';
+            } else if (p === 4 && currentState.currentPage > 5) {
+                html += '<span class="page-ellipsis">...</span>';
+            } else if (p === currentState.totalPages - 3 && currentState.currentPage < currentState.totalPages - 4) {
+                html += '<span class="page-ellipsis">...</span>';
+            }
+        }
+        
+        // 下一页按钮
+        if (currentState.currentPage < currentState.totalPages) {
+            html += '<button class="btn btn-secondary btn-next">下一页 →</button>';
+        } else {
+            html += '<button class="btn btn-secondary" disabled>下一页 →</button>';
+        }
+        
+        html += '</div></div>';
+        
+        container.innerHTML = html;
+        
+        // 绑定分页按钮事件
+        const buttonsContainer = document.getElementById('paginationButtons');
+        if (buttonsContainer) {
+            // 上一页
+            const prevBtn = buttonsContainer.querySelector('.btn-prev');
+            if (prevBtn) {
+                prevBtn.addEventListener('click', function() {
+                    goToPage(currentState.currentPage - 1);
+                });
+            }
+            // 下一页
+            const nextBtn = buttonsContainer.querySelector('.btn-next');
+            if (nextBtn) {
+                nextBtn.addEventListener('click', function() {
+                    goToPage(currentState.currentPage + 1);
+                });
+            }
+            // 页码按钮
+            buttonsContainer.querySelectorAll('.page-number[data-page]').forEach(btn => {
+                btn.addEventListener('click', function() {
+                    const page = parseInt(this.getAttribute('data-page'));
+                    goToPage(page);
+                });
+            });
+        }
+    }
+
+    // 跳转到指定页
+    function goToPage(page) {
+        if (page < 1 || page > currentState.totalPages) return;
+        currentState.currentPage = page;
+        loadDocuments();
+        // 滚动到页面顶部
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+
+    // 切换文档详情显示
+    function toggleDetail(index) {
+        const detail = document.getElementById('detail-' + index);
+        if (detail) {
+            detail.style.display = detail.style.display === 'none' ? 'block' : 'none';
+        }
+    }
+{% endblock %}

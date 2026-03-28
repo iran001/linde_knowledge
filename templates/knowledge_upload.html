@@ -1,0 +1,192 @@
+{% extends "base.html" %}
+
+{% block title %}{{ page_title }} - {{ app_name }}{% endblock %}
+
+{% block extra_css %}
+<style>
+    .back-link {
+        margin-bottom: 20px;
+    }
+    
+    .upload-section {
+        background: white;
+        border-radius: 10px;
+        padding: 2rem;
+        margin-bottom: 20px;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+        text-align: center;
+    }
+    
+    .upload-section h3 {
+        margin-bottom: 1.5rem;
+        color: #333;
+    }
+    
+    .upload-btn {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        padding: 12px 32px;
+        background: #1C64F2;
+        color: white;
+        border: none;
+        border-radius: 8px;
+        font-size: 1rem;
+        cursor: pointer;
+        transition: all 0.3s;
+    }
+    
+    .upload-btn:hover {
+        background: #1e40af;
+        transform: translateY(-2px);
+        box-shadow: 0 4px 12px rgba(28, 100, 242, 0.3);
+    }
+    
+    .upload-btn:disabled {
+        background: #9ca3af;
+        cursor: not-allowed;
+        transform: none;
+        box-shadow: none;
+    }
+    
+    .file-input {
+        display: none;
+    }
+    
+    .upload-status {
+        margin-top: 20px;
+        padding: 12px 16px;
+        border-radius: 8px;
+        display: none;
+        word-wrap: break-word;
+        line-height: 1.5;
+    }
+
+    .upload-status.success {
+        display: block;
+        background: #d1fae5;
+        color: #065f46;
+        border: 1px solid #6ee7b7;
+    }
+
+    .upload-status.error {
+        display: block;
+        background: #fee2e2;
+        color: #991b1b;
+        border: 1px solid #fca5a5;
+        white-space: pre-wrap;
+    }
+
+    .upload-status.info {
+        display: block;
+        background: #dbeafe;
+        color: #1e40af;
+        border: 1px solid #93c5fd;
+    }
+
+    .upload-status.loading {
+        display: block;
+        background: #f3f4f6;
+        color: #374151;
+        border: 1px solid #d1d5db;
+    }
+    
+    .upload-hint {
+        margin-top: 16px;
+        color: #6b7280;
+        font-size: 0.85rem;
+    }
+
+    .upload-size-hint {
+        margin-top: 8px;
+        color: #9ca3af;
+        font-size: 0.75rem;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<h2 class="page-title">📤 {{ page_title }}</h2>
+
+<!-- 返回链接 -->
+<div class="back-link">
+    <a href="/page/documents" class="btn btn-secondary">← 返回文档管理</a>
+</div>
+
+<!-- 文件上传区域 -->
+<div class="upload-section">
+    <h3>📎 上传文档到知识库</h3>
+    <input type="file" id="fileInput" class="file-input" accept=".txt,.pdf,.doc,.docx,.md">
+    <button class="upload-btn" id="uploadBtn" onclick="selectFile()">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+            <polyline points="17 8 12 3 7 8"></polyline>
+            <line x1="12" y1="3" x2="12" y2="15"></line>
+        </svg>
+        添加文件
+    </button>
+    <div class="upload-hint">支持格式：TXT、PDF、DOC、DOCX、MD</div>
+    <div class="upload-size-hint">文档 < 15.00 MB, 图片 < 10.00 MB, 音频 < 50.00 MB, 视频 < 100.00 MB</div>
+    <div class="upload-status" id="uploadStatus"></div>
+</div>
+
+<script>
+    let selectedFile = null;
+
+    // 选择文件
+    function selectFile() {
+        document.getElementById('fileInput').click();
+    }
+
+    // 文件选择变化
+    document.getElementById('fileInput').addEventListener('change', async function(e) {
+        if (e.target.files.length > 0) {
+            selectedFile = e.target.files[0];
+            await uploadFile();
+        }
+    });
+
+    // 显示状态
+    function showStatus(message, type) {
+        const statusEl = document.getElementById('uploadStatus');
+        statusEl.textContent = message;
+        statusEl.className = 'upload-status ' + type;
+    }
+
+    // 上传文件
+    async function uploadFile() {
+        if (!selectedFile) return;
+
+        const uploadBtn = document.getElementById('uploadBtn');
+        uploadBtn.disabled = true;
+
+        showStatus('正在上传并解析文档...', 'loading');
+
+        const formData = new FormData();
+        formData.append('file', selectedFile);
+
+        try {
+            const response = await fetch('/api/upload-document', {
+                method: 'POST',
+                body: formData
+            });
+
+            const data = await response.json();
+
+            if (response.ok && data.success) {
+                showStatus(data.message || '文件上传成功！', 'success');
+                selectedFile = null;
+                document.getElementById('fileInput').value = '';
+            } else {
+                const errorMsg = data.detail || data.message || data.error || '上传失败，请重试';
+                showStatus('上传失败：' + errorMsg, 'error');
+            }
+        } catch (error) {
+            console.error('Upload error:', error);
+            showStatus('上传失败：' + (error.message || '网络请求异常'), 'error');
+        } finally {
+            uploadBtn.disabled = false;
+        }
+    }
+</script>
+{% endblock %}

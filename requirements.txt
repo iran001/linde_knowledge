@@ -1,0 +1,18 @@
+# 林德亚太知识库管理平台 - Python 依赖包
+# 安装命令: pip install -r requirements.txt
+
+# ========== Web 框架 ==========
+fastapi==0.109.0              # 高性能后端API框架
+uvicorn[standard]==0.27.0     # ASGI服务器，用于运行FastAPI
+streamlit==1.31.0             # 前端界面框架
+
+# ========== HTTP 客户端 ==========
+httpx==0.26.0                 # 异步HTTP客户端，用于调用Dify/RagFlow API
+requests==2.31.0              # 同步HTTP客户端（备用）
+
+# ========== 数据验证 ==========
+pydantic==2.6.1               # 数据模型验证
+python-multipart==0.0.6       # 表单数据处理（FastAPI依赖）
+
+# ========== 工具库 ==========
+python-dotenv==1.0.0          # 环境变量管理
