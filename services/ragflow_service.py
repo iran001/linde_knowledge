@@ -62,7 +62,7 @@ async def fetch_documents_from_api(
 ) -> Dict[str, Any]:
     """
     从 RAGFlow API 获取文档列表
-    - admin/manager 角色：从 dataset_id、vl_dataset_id 两个 dataset 查询并合并
+    - admin/manager 角色：从 dataset_id、dataset2_id 两个 dataset 查询并合并
     - reception 角色：仅从 dataset_id 查询
     """
     logger.info("\n" + "=" * 80)
@@ -72,10 +72,10 @@ async def fetch_documents_from_api(
     try:
         base_url = str(RAGFLOW_CONFIG["base_url"])
         dataset_id = str(RAGFLOW_CONFIG["dataset_id"])
-        vl_dataset_id = str(RAGFLOW_CONFIG.get("vl_dataset_id", ""))
+        dataset2_id = str(RAGFLOW_CONFIG.get("dataset2_id", ""))
         api_key = str(RAGFLOW_CONFIG["api_key"])
         
-        logger.info(f"[RAGFlow API] Configuration: base_url={base_url}, dataset_id={dataset_id}, vl_dataset_id={vl_dataset_id}")
+        logger.info(f"[RAGFlow API] Configuration: base_url={base_url}, dataset_id={dataset_id}, dataset2_id={dataset2_id}")
         
         async with httpx.AsyncClient(timeout=float(RAGFLOW_CONFIG.get("timeout", 60))) as client:
             if role == "reception":
@@ -85,7 +85,7 @@ async def fetch_documents_from_api(
                 )
             else:
                 return await _fetch_admin_documents(
-                    client, base_url, api_key, dataset_id, vl_dataset_id,
+                    client, base_url, api_key, dataset_id, dataset2_id,
                     keyword, page, page_size, role
                 )
                 
@@ -130,20 +130,20 @@ async def _fetch_admin_documents(
     base_url: str,
     api_key: str,
     dataset_id: str,
-    vl_dataset_id: str,
+    dataset2_id: str,
     keyword: str,
     page: int,
     page_size: int,
     role: str
 ) -> Dict[str, Any]:
     """获取 admin/manager 角色的文档列表"""
-    logger.info(f"[RAGFlow API] Role is '{role}', fetching from dataset_id and vl_dataset_id")
+    logger.info(f"[RAGFlow API] Role is '{role}', fetching from dataset_id and dataset2_id")
     
     docs_from_primary = await _fetch_all_documents_from_dataset(
         client, base_url, dataset_id, api_key, keyword
     )
     docs_from_vl = await _fetch_all_documents_from_dataset(
-        client, base_url, vl_dataset_id, api_key, keyword
+        client, base_url, dataset2_id, api_key, keyword
     )
     
     logger.info(f"[RAGFlow API] Primary dataset: {len(docs_from_primary)} docs")
@@ -474,7 +474,7 @@ async def search_chunks_from_ragflow(
         base_url = str(RAGFLOW_CONFIG["base_url"])
         api_key = str(RAGFLOW_CONFIG["api_key"])
         default_dataset_id = str(RAGFLOW_CONFIG.get("dataset_id", ""))
-        vl_dataset_id = str(RAGFLOW_CONFIG.get("vl_dataset_id", ""))
+        dataset2_id = str(RAGFLOW_CONFIG.get("dataset2_id", ""))
         
         # 根据角色确定要搜索的知识库
         datasets_to_search = []
@@ -484,7 +484,7 @@ async def search_chunks_from_ragflow(
         else:
             # 根据角色确定可搜索的知识库
             if user_role in ["admin", "manager"]:
-                datasets_to_search = [d for d in [default_dataset_id, vl_dataset_id] if d]
+                datasets_to_search = [d for d in [default_dataset_id, dataset2_id] if d]
             else:
                 # reception 只能搜索默认知识库
                 datasets_to_search = [default_dataset_id] if default_dataset_id else []
@@ -706,7 +706,7 @@ async def _get_documents_map_in_dataset(
 def _get_dataset_name(dataset_id: str) -> str:
     """根据 dataset_id 获取数据集名称"""
     default_id = RAGFLOW_CONFIG.get("dataset_id", "")
-    vl_id = RAGFLOW_CONFIG.get("vl_dataset_id", "")
+    vl_id = RAGFLOW_CONFIG.get("dataset2_id", "")
     
     if dataset_id == default_id:
         return "默认知识库"

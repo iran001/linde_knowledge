@@ -289,5 +289,5 @@ async def search_page(request: Request, keyword: str = ""):
         "active_page": "search",
         "keyword": keyword,
         "dataset_id": RAGFLOW_CONFIG.get("dataset_id", ""),
-        "vl_dataset_id": RAGFLOW_CONFIG.get("vl_dataset_id", "")
+        "vl_dataset_id": RAGFLOW_CONFIG.get("dataset2_id", "")
     })

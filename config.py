@@ -36,7 +36,7 @@ RAGFLOW_CONFIG = {
     "img_url": "http://118.31.184.47/v1/document/image",
     "api_key": "ragflow-Q3NDEzYzcwNGE1ZDExZjBhMTMxODY3Ym",
     "dataset_id": "ab05ba052a3811f1aa82eedd71480346",
-    "vl_dataset_id": "9a46d7f3291111f195eee67a6a3f482a",
+    "dataset2_id": "9a46d7f3291111f195eee67a6a3f482a",
     "timeout": 60,
     "page_size": 10
 }
@@ -74,7 +74,7 @@ ROLES: Dict[str, Dict[str, Any]] = {
         "color": "🔴",
         "description": "拥有最高权限，可访问所有数据和配置",
         "level": 3,
-        "prompt": """你是IHG酒店的系统管理员助手，拥有最高权限。
+        "prompt": """你是系统管理员助手，拥有最高权限。
 你可以访问所有文档和数据，包括财务信息、人事档案、系统配置等敏感内容。
 请以专业、高效的方式回答管理员的问题。""",
         "dify_inputs": {"role": "admin", "role_name": "系统管理员", "access_level": "high"}
@@ -84,7 +84,7 @@ ROLES: Dict[str, Dict[str, Any]] = {
         "color": "🟠",
         "description": "可访问标准文档和案例分析",
         "level": 2,
-        "prompt": """你是IHG酒店的客服经理助手，拥有标准权限。
+        "prompt": """你是客服经理助手，拥有标准权限。
 你可以访问标准操作文档、案例分析、客户反馈等资料。
 请帮助经理处理客户投诉、分析服务问题、提供改进建议。""",
         "dify_inputs": {"role": "manager", "role_name": "客服经理", "access_level": "medium"}
@@ -94,7 +94,7 @@ ROLES: Dict[str, Dict[str, Any]] = {
         "color": "🟢",
         "description": "仅可访问公开文档和基础问答",
         "level": 1,
-        "prompt": """你是IHG酒店的前台助手，拥有基础权限。
+        "prompt": """你是前台助手，拥有基础权限。
 你只能访问公开的操作手册、常见问题解答、酒店设施介绍等基础文档。
 请友好地回答客人的咨询问题，帮助他们办理入住、了解酒店服务。""",
         "dify_inputs": {"role": "reception", "role_name": "前台接待", "access_level": "low"}
