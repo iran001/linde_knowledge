@@ -308,6 +308,9 @@
                 <a href="/page/chat" class="nav-item {% if active_page == 'chat' %}active{% endif %}">💬 智能对话</a>
                 <a href="/page/search" class="nav-item {% if active_page == 'search' %}active{% endif %}">🔍 知识搜索</a>
                 <a href="/page/documents" class="nav-item {% if active_page == 'documents' %}active{% endif %}">📄 文档管理</a>
+                {% if user and user.role == 'admin' %}
+                <a href="/page/audit-logs" class="nav-item {% if active_page == 'audit-logs' %}active{% endif %}">📋 审计日志</a>
+                {% endif %}
             </div>
         </div>
         

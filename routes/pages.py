@@ -289,5 +289,29 @@ async def search_page(request: Request, keyword: str = ""):
         "active_page": "search",
         "keyword": keyword,
         "dataset_id": RAGFLOW_CONFIG.get("dataset_id", ""),
-        "vl_dataset_id": RAGFLOW_CONFIG.get("dataset2_id", "")
+        "dataset2_id": RAGFLOW_CONFIG.get("dataset2_id", ""),
+        "dataset3_id": RAGFLOW_CONFIG.get("dataset3_id", ""),
+        "dataset4_id": RAGFLOW_CONFIG.get("dataset4_id", "")
+    })
+
+
+@router.get("/page/audit-logs", response_class=HTMLResponse)
+async def audit_logs_page(request: Request):
+    """审计日志页面 - 仅管理员可访问"""
+    user = get_current_user(request)
+    if not user:
+        return RedirectResponse(url="/")
+    
+    # 仅管理员可访问
+    if user.get("role") != "admin":
+        from fastapi import HTTPException
+        raise HTTPException(status_code=403, detail="权限不足，仅管理员可查看审计日志")
+    
+    return templates.TemplateResponse("audit_logs.html", {
+        "request": request,
+        "app_name": APP_INFO["name"],
+        "logo": APP_INFO["logo"],
+        "page_title": "审计日志",
+        "user": user,
+        "active_page": "audit-logs"
     })

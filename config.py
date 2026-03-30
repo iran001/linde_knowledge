@@ -37,6 +37,8 @@ RAGFLOW_CONFIG = {
     "api_key": "ragflow-Q3NDEzYzcwNGE1ZDExZjBhMTMxODY3Ym",
     "dataset_id": "ab05ba052a3811f1aa82eedd71480346",
     "dataset2_id": "9a46d7f3291111f195eee67a6a3f482a",
+    "dataset3_id": "a348c791291211f19891e67a6a3f482a",
+    "dataset4_id": "f7babd482bea11f1ab9cce8dd9fa8f90",
     "timeout": 60,
     "page_size": 10
 }
@@ -62,7 +64,8 @@ PAGE_CONFIG = {
     "chat": {"title": "智能对话"},
     "search": {"title": "知识搜索"},
     "documents": {"title": "文档管理"},
-    "knowledge_upload": {"title": "文件上传"}
+    "knowledge_upload": {"title": "文件上传"},
+    "audit_logs": {"title": "审计日志"}
 }
 
 # =============================================================================

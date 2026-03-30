@@ -584,19 +584,16 @@
         currentBotMessageId = null;
         let hasReceivedContent = false;
 
-        const response = await fetch(DIFY_CONFIG.baseUrl + DIFY_CONFIG.endpoint, {
+        // 调用后端API，由后端转发到Dify并记录审计日志
+        const response = await fetch('/api/chat', {
             method: 'POST',
             headers: {
-                'Authorization': `Bearer ${DIFY_CONFIG.apiKey}`,
                 'Content-Type': 'application/json'
             },
             body: JSON.stringify({
-                inputs: ROLE_INPUTS,
-                query: userMessageContent,
-                response_mode: 'streaming',
-                conversation_id: conversationId,
-                user: USER_ID,
-                files: []
+                role: USER_ROLE,
+                message: userMessageContent,
+                conversation_id: conversationId
             })
         });
 

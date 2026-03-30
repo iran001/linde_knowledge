@@ -1,0 +1,655 @@
+{% extends "base.html" %}
+
+{% block title %}审计日志 - {{ app_name }}{% endblock %}
+
+{% block extra_css %}
+<style>
+    .audit-logs-wrapper {
+        background: #fff;
+        border-radius: 12px;
+        box-shadow: 0 2px 12px rgba(0,0,0,0.08);
+        padding: 1.5rem;
+    }
+
+    .audit-logs-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 1.5rem;
+        padding-bottom: 1rem;
+        border-bottom: 1px solid #e5e7eb;
+    }
+
+    .audit-logs-header h2 {
+        margin: 0;
+        font-size: 1.5rem;
+        font-weight: 600;
+        color: #111827;
+    }
+
+    /* 筛选区域 */
+    .filter-section {
+        display: flex;
+        gap: 1rem;
+        margin-bottom: 1.5rem;
+        flex-wrap: wrap;
+        align-items: flex-end;
+    }
+
+    .filter-group {
+        display: flex;
+        flex-direction: column;
+        gap: 0.5rem;
+    }
+
+    .filter-group label {
+        font-size: 0.85rem;
+        color: #6b7280;
+        font-weight: 500;
+    }
+
+    .filter-input {
+        padding: 0.5rem 0.75rem;
+        border: 1px solid #d1d5db;
+        border-radius: 6px;
+        font-size: 0.9rem;
+        min-width: 150px;
+    }
+
+    .filter-input:focus {
+        outline: none;
+        border-color: #1C64F2;
+        box-shadow: 0 0 0 3px rgba(28, 100, 242, 0.1);
+    }
+
+    .btn-filter {
+        padding: 0.5rem 1rem;
+        background: #1C64F2;
+        color: white;
+        border: none;
+        border-radius: 6px;
+        cursor: pointer;
+        font-size: 0.9rem;
+        transition: background 0.2s;
+        height: fit-content;
+    }
+
+    .btn-filter:hover {
+        background: #1e40af;
+    }
+
+    .btn-reset {
+        padding: 0.5rem 1rem;
+        background: #f3f4f6;
+        color: #374151;
+        border: 1px solid #d1d5db;
+        border-radius: 6px;
+        cursor: pointer;
+        font-size: 0.9rem;
+        transition: all 0.2s;
+        height: fit-content;
+    }
+
+    .btn-reset:hover {
+        background: #e5e7eb;
+    }
+
+    /* 日志表格 */
+    .logs-table-container {
+        overflow-x: auto;
+    }
+
+    .logs-table {
+        width: 100%;
+        border-collapse: collapse;
+        font-size: 0.9rem;
+    }
+
+    .logs-table th,
+    .logs-table td {
+        padding: 0.75rem 1rem;
+        text-align: left;
+        border-bottom: 1px solid #e5e7eb;
+    }
+
+    .logs-table th {
+        background: #f9fafb;
+        font-weight: 600;
+        color: #374151;
+        white-space: nowrap;
+    }
+
+    .logs-table tr:hover {
+        background: #f9fafb;
+    }
+
+    .logs-table td {
+        color: #4b5563;
+    }
+
+    /* 状态标签 */
+    .status-badge {
+        display: inline-block;
+        padding: 0.25rem 0.75rem;
+        border-radius: 12px;
+        font-size: 0.8rem;
+        font-weight: 500;
+    }
+
+    .status-success {
+        background: #d1fae5;
+        color: #065f46;
+    }
+
+    .status-failure {
+        background: #fee2e2;
+        color: #991b1b;
+    }
+
+    /* 操作类型标签 */
+    .action-badge {
+        display: inline-block;
+        padding: 0.25rem 0.75rem;
+        border-radius: 12px;
+        font-size: 0.8rem;
+        font-weight: 500;
+    }
+
+    .action-login { background: #dbeafe; color: #1e40af; }
+    .action-logout { background: #f3e8ff; color: #6b21a8; }
+    .action-import { background: #dcfce7; color: #166534; }
+    .action-search { background: #fef3c7; color: #92400e; }
+    .action-chat { background: #e0e7ff; color: #3730a3; }
+    .action-download { background: #fce7f3; color: #9d174d; }
+
+    /* 详情弹窗 */
+    .details-modal {
+        display: none;
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: rgba(0, 0, 0, 0.5);
+        z-index: 1000;
+        justify-content: center;
+        align-items: center;
+    }
+
+    .details-modal.active {
+        display: flex;
+    }
+
+    .details-modal-content {
+        background: white;
+        border-radius: 12px;
+        padding: 1.5rem;
+        max-width: 600px;
+        width: 90%;
+        max-height: 80vh;
+        overflow-y: auto;
+        box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1);
+    }
+
+    .details-modal-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 1rem;
+        padding-bottom: 1rem;
+        border-bottom: 1px solid #e5e7eb;
+    }
+
+    .details-modal-header h3 {
+        margin: 0;
+        font-size: 1.25rem;
+    }
+
+    .btn-close {
+        background: none;
+        border: none;
+        font-size: 1.5rem;
+        cursor: pointer;
+        color: #6b7280;
+    }
+
+    .btn-close:hover {
+        color: #111827;
+    }
+
+    .details-content {
+        font-size: 0.9rem;
+    }
+
+    .details-row {
+        display: flex;
+        margin-bottom: 0.75rem;
+    }
+
+    .details-label {
+        width: 100px;
+        font-weight: 600;
+        color: #6b7280;
+        flex-shrink: 0;
+    }
+
+    .details-value {
+        flex: 1;
+        color: #111827;
+        word-break: break-all;
+    }
+
+    .details-json {
+        background: #f9fafb;
+        padding: 1rem;
+        border-radius: 6px;
+        font-family: monospace;
+        font-size: 0.85rem;
+        overflow-x: auto;
+        white-space: pre-wrap;
+    }
+
+    /* 分页 */
+    .pagination {
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        gap: 0.5rem;
+        margin-top: 1.5rem;
+        padding-top: 1rem;
+        border-top: 1px solid #e5e7eb;
+    }
+
+    .pagination button {
+        padding: 0.5rem 0.75rem;
+        border: 1px solid #d1d5db;
+        background: white;
+        border-radius: 6px;
+        cursor: pointer;
+        font-size: 0.9rem;
+        transition: all 0.2s;
+    }
+
+    .pagination button:hover:not(:disabled) {
+        background: #f3f4f6;
+        border-color: #9ca3af;
+    }
+
+    .pagination button:disabled {
+        opacity: 0.5;
+        cursor: not-allowed;
+    }
+
+    .pagination button.active {
+        background: #1C64F2;
+        color: white;
+        border-color: #1C64F2;
+    }
+
+    .pagination-info {
+        color: #6b7280;
+        font-size: 0.9rem;
+    }
+
+    /* 空状态 */
+    .empty-state {
+        text-align: center;
+        padding: 3rem;
+        color: #6b7280;
+    }
+
+    .empty-state-icon {
+        font-size: 3rem;
+        margin-bottom: 1rem;
+    }
+
+    /* 加载中 */
+    .loading {
+        text-align: center;
+        padding: 3rem;
+        color: #6b7280;
+    }
+
+    /* 按钮链接样式 */
+    .btn-link {
+        background: none;
+        border: none;
+        color: #1C64F2;
+        cursor: pointer;
+        font-size: 0.85rem;
+        text-decoration: underline;
+        padding: 0;
+    }
+
+    .btn-link:hover {
+        color: #1e40af;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="audit-logs-wrapper">
+    <div class="audit-logs-header">
+        <h2>📋 审计日志</h2>
+    </div>
+
+    <!-- 筛选区域 -->
+    <div class="filter-section">
+        <div class="filter-group">
+            <label>操作类型</label>
+            <select id="filterAction" class="filter-input">
+                <option value="">全部</option>
+            </select>
+        </div>
+        <div class="filter-group">
+            <label>用户</label>
+            <input type="text" id="filterUser" class="filter-input" placeholder="用户名">
+        </div>
+        <div class="filter-group">
+            <label>开始日期</label>
+            <input type="date" id="filterDateFrom" class="filter-input">
+        </div>
+        <div class="filter-group">
+            <label>结束日期</label>
+            <input type="date" id="filterDateTo" class="filter-input">
+        </div>
+        <button class="btn-filter" onclick="applyFilters()">🔍 查询</button>
+        <button class="btn-reset" onclick="resetFilters()">↺ 重置</button>
+    </div>
+
+    <!-- 日志表格 -->
+    <div class="logs-table-container">
+        <table class="logs-table" id="logsTable">
+            <thead>
+                <tr>
+                    <th>时间</th>
+                    <th>操作类型</th>
+                    <th>用户</th>
+                    <th>角色</th>
+                    <th>状态</th>
+                    <th>IP地址</th>
+                    <th>详情</th>
+                </tr>
+            </thead>
+            <tbody id="logsTableBody">
+                <tr>
+                    <td colspan="7" class="loading">加载中...</td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+
+    <!-- 分页 -->
+    <div class="pagination" id="pagination"></div>
+</div>
+
+<!-- 详情弹窗 -->
+<div class="details-modal" id="detailsModal">
+    <div class="details-modal-content">
+        <div class="details-modal-header">
+            <h3>日志详情</h3>
+            <button class="btn-close" onclick="closeDetailsModal()">&times;</button>
+        </div>
+        <div class="details-content" id="detailsContent"></div>
+    </div>
+</div>
+
+<script>
+    let currentPage = 1;
+    let currentFilters = {};
+
+    // 操作类型映射
+    const actionTypeMap = {
+        'knowledge_import': { label: '知识导入', class: 'action-import' },
+        'knowledge_query': { label: '知识查询', class: 'action-search' },
+        'knowledge_search': { label: '知识搜索', class: 'action-search' },
+        'chat_question': { label: '问答对话', class: 'action-chat' },
+        'document_download': { label: '文档下载', class: 'action-download' },
+        'user_login': { label: '用户登录', class: 'action-login' },
+        'user_logout': { label: '用户登出', class: 'action-logout' }
+    };
+
+    // 初始化
+    document.addEventListener('DOMContentLoaded', function() {
+        loadActionTypes();
+        loadLogs();
+    });
+
+    // 加载操作类型
+    async function loadActionTypes() {
+        try {
+            const response = await fetch('/api/audit-logs/action-types');
+            const data = await response.json();
+            
+            if (data.success) {
+                const select = document.getElementById('filterAction');
+                data.action_types.forEach(type => {
+                    const option = document.createElement('option');
+                    option.value = type.value;
+                    option.textContent = type.label;
+                    select.appendChild(option);
+                });
+            }
+        } catch (error) {
+            console.error('加载操作类型失败:', error);
+        }
+    }
+
+    // 加载日志
+    async function loadLogs(page = 1) {
+        currentPage = page;
+        
+        const params = new URLSearchParams({
+            page: page,
+            page_size: 50,
+            ...currentFilters
+        });
+        
+        try {
+            const response = await fetch(`/api/audit-logs?${params}`);
+            const data = await response.json();
+            
+            if (data.success) {
+                renderLogs(data.logs);
+                renderPagination(data.total, data.page, data.page_size, data.total_pages);
+            } else {
+                document.getElementById('logsTableBody').innerHTML = `
+                    <tr>
+                        <td colspan="7" class="empty-state">
+                            <div class="empty-state-icon">⚠️</div>
+                            <div>加载失败: ${data.message || '未知错误'}</div>
+                        </td>
+                    </tr>
+                `;
+            }
+        } catch (error) {
+            console.error('加载日志失败:', error);
+            document.getElementById('logsTableBody').innerHTML = `
+                <tr>
+                    <td colspan="7" class="empty-state">
+                        <div class="empty-state-icon">⚠️</div>
+                        <div>加载失败，请重试</div>
+                    </td>
+                </tr>
+            `;
+        }
+    }
+
+    // 渲染日志表格
+    function renderLogs(logs) {
+        const tbody = document.getElementById('logsTableBody');
+        
+        if (logs.length === 0) {
+            tbody.innerHTML = `
+                <tr>
+                    <td colspan="7" class="empty-state">
+                        <div class="empty-state-icon">📭</div>
+                        <div>暂无日志记录</div>
+                    </td>
+                </tr>
+            `;
+            return;
+        }
+        
+        tbody.innerHTML = logs.map(log => {
+            const actionInfo = actionTypeMap[log.action] || { label: log.action, class: '' };
+            const statusClass = log.status === 'success' ? 'status-success' : 'status-failure';
+            const statusText = log.status === 'success' ? '成功' : '失败';
+            
+            return `
+                <tr>
+                    <td>${formatDateTime(log.timestamp)}</td>
+                    <td><span class="action-badge ${actionInfo.class}">${actionInfo.label}</span></td>
+                    <td>${escapeHtml(log.user_name || log.user_id)}</td>
+                    <td>${escapeHtml(log.user_role)}</td>
+                    <td><span class="status-badge ${statusClass}">${statusText}</span></td>
+                    <td>${log.ip_address || '-'}</td>
+                    <td>
+                        <button class="btn-link" onclick="showDetails(${JSON.stringify(log).replace(/"/g, '&quot;')})">查看详情</button>
+                    </td>
+                </tr>
+            `;
+        }).join('');
+    }
+
+    // 渲染分页
+    function renderPagination(total, page, pageSize, totalPages) {
+        const pagination = document.getElementById('pagination');
+        
+        let html = `<span class="pagination-info">共 ${total} 条记录，第 ${page}/${totalPages} 页</span>`;
+        
+        // 上一页
+        html += `<button ${page <= 1 ? 'disabled' : ''} onclick="loadLogs(${page - 1})">上一页</button>`;
+        
+        // 页码
+        const maxButtons = 5;
+        let startPage = Math.max(1, page - Math.floor(maxButtons / 2));
+        let endPage = Math.min(totalPages, startPage + maxButtons - 1);
+        
+        if (endPage - startPage < maxButtons - 1) {
+            startPage = Math.max(1, endPage - maxButtons + 1);
+        }
+        
+        for (let i = startPage; i <= endPage; i++) {
+            html += `<button class="${i === page ? 'active' : ''}" onclick="loadLogs(${i})">${i}</button>`;
+        }
+        
+        // 下一页
+        html += `<button ${page >= totalPages ? 'disabled' : ''} onclick="loadLogs(${page + 1})">下一页</button>`;
+        
+        pagination.innerHTML = html;
+    }
+
+    // 应用筛选
+    function applyFilters() {
+        currentFilters = {
+            action: document.getElementById('filterAction').value,
+            user: document.getElementById('filterUser').value,
+            date_from: document.getElementById('filterDateFrom').value,
+            date_to: document.getElementById('filterDateTo').value
+        };
+        
+        // 移除空值
+        Object.keys(currentFilters).forEach(key => {
+            if (!currentFilters[key]) delete currentFilters[key];
+        });
+        
+        loadLogs(1);
+    }
+
+    // 重置筛选
+    function resetFilters() {
+        document.getElementById('filterAction').value = '';
+        document.getElementById('filterUser').value = '';
+        document.getElementById('filterDateFrom').value = '';
+        document.getElementById('filterDateTo').value = '';
+        
+        currentFilters = {};
+        loadLogs(1);
+    }
+
+    // 显示详情
+    function showDetails(log) {
+        const actionInfo = actionTypeMap[log.action] || { label: log.action };
+        const statusClass = log.status === 'success' ? 'status-success' : 'status-failure';
+        
+        let detailsHtml = `
+            <div class="details-row">
+                <div class="details-label">时间:</div>
+                <div class="details-value">${formatDateTime(log.timestamp)}</div>
+            </div>
+            <div class="details-row">
+                <div class="details-label">操作类型:</div>
+                <div class="details-value">${actionInfo.label}</div>
+            </div>
+            <div class="details-row">
+                <div class="details-label">用户:</div>
+                <div class="details-value">${escapeHtml(log.user_name || log.user_id)} (${escapeHtml(log.user_role)})</div>
+            </div>
+            <div class="details-row">
+                <div class="details-label">状态:</div>
+                <div class="details-value"><span class="status-badge ${statusClass}">${log.status === 'success' ? '成功' : '失败'}</span></div>
+            </div>
+            <div class="details-row">
+                <div class="details-label">IP地址:</div>
+                <div class="details-value">${log.ip_address || '-'}</div>
+            </div>
+        `;
+        
+        if (log.message) {
+            detailsHtml += `
+                <div class="details-row">
+                    <div class="details-label">消息:</div>
+                    <div class="details-value">${escapeHtml(log.message)}</div>
+                </div>
+            `;
+        }
+        
+        if (log.details && Object.keys(log.details).length > 0) {
+            detailsHtml += `
+                <div class="details-row" style="flex-direction: column;">
+                    <div class="details-label" style="margin-bottom: 0.5rem;">操作详情:</div>
+                    <div class="details-json">${JSON.stringify(log.details, null, 2)}</div>
+                </div>
+            `;
+        }
+        
+        document.getElementById('detailsContent').innerHTML = detailsHtml;
+        document.getElementById('detailsModal').classList.add('active');
+    }
+
+    // 关闭详情弹窗
+    function closeDetailsModal() {
+        document.getElementById('detailsModal').classList.remove('active');
+    }
+
+    // 点击弹窗外部关闭
+    document.getElementById('detailsModal').addEventListener('click', function(e) {
+        if (e.target === this) {
+            closeDetailsModal();
+        }
+    });
+
+    // 格式化日期时间
+    function formatDateTime(timestamp) {
+        if (!timestamp) return '-';
+        const date = new Date(timestamp);
+        return date.toLocaleString('zh-CN', {
+            year: 'numeric',
+            month: '2-digit',
+            day: '2-digit',
+            hour: '2-digit',
+            minute: '2-digit',
+            second: '2-digit'
+        });
+    }
+
+    // HTML转义
+    function escapeHtml(text) {
+        if (!text) return '';
+        const div = document.createElement('div');
+        div.textContent = text;
+        return div.innerHTML;
+    }
+</script>
+{% endblock %}

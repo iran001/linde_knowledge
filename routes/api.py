@@ -29,6 +29,16 @@ from services import (
     upload_to_ragflow,
     search_chunks_from_ragflow,
 )
+from services.audit_service import (
+    audit_logger,
+    log_knowledge_import,
+    log_knowledge_search,
+    log_chat_question,
+    log_document_download,
+    log_user_login,
+    log_user_logout,
+    AuditActionType
+)
 
 
 logger = logging.getLogger(__name__)
@@ -108,6 +118,15 @@ async def api_login(request: Request, login_data: LoginRequest):
     user = MOCK_USERS.get(login_data.username)
     
     if not user or user["password"] != login_data.password:
+        # 记录登录失败日志
+        await log_user_login(
+            user_id=login_data.username,
+            user_name=login_data.username,
+            user_role="unknown",
+            status="failure",
+            message="用户名或密码错误",
+            ip_address=request.client.host if request.client else None
+        )
         return {"success": False, "message": "用户名或密码错误"}
     
     session_id = str(uuid.uuid4())
@@ -116,6 +135,15 @@ async def api_login(request: Request, login_data: LoginRequest):
         "role": user["role"],
         "display_name": user["display_name"]
     }
+    
+    # 记录登录成功日志
+    await log_user_login(
+        user_id=user["username"],
+        user_name=user["display_name"],
+        user_role=user["role"],
+        status="success",
+        ip_address=request.client.host if request.client else None
+    )
     
     response = {
         "success": True,
@@ -138,6 +166,15 @@ async def api_login_form(request: Request, username: str = Form(...), password: 
     user = MOCK_USERS.get(username)
     
     if not user or user["password"] != password:
+        # 记录登录失败日志
+        await log_user_login(
+            user_id=username,
+            user_name=username,
+            user_role="unknown",
+            status="failure",
+            message="用户名或密码错误",
+            ip_address=request.client.host if request.client else None
+        )
         return templates.TemplateResponse("login.html", {
             "request": request,
             "app_name": APP_INFO["name"],
@@ -155,6 +192,15 @@ async def api_login_form(request: Request, username: str = Form(...), password: 
         "display_name": user["display_name"]
     }
     
+    # 记录登录成功日志
+    await log_user_login(
+        user_id=user["username"],
+        user_name=user["display_name"],
+        user_role=user["role"],
+        status="success",
+        ip_address=request.client.host if request.client else None
+    )
+    
     response = RedirectResponse(url="/page/chat", status_code=302)
     response.set_cookie(key="session_id", value=session_id, httponly=True)
     return response
@@ -165,6 +211,14 @@ async def api_logout(request: Request):
     """登出接口"""
     session_id = request.cookies.get("session_id")
     if session_id and session_id in sessions:
+        user = sessions[session_id]
+        # 记录登出日志
+        await log_user_logout(
+            user_id=user["username"],
+            user_name=user["display_name"],
+            user_role=user["role"],
+            ip_address=request.client.host if request.client else None
+        )
         del sessions[session_id]
     
     response = RedirectResponse(url="/", status_code=302)
@@ -178,15 +232,64 @@ async def api_logout(request: Request):
 
 @router.post("/chat")
 async def api_chat(request: Request, chat_data: ChatRequest):
-    """聊天接口 - 代理转发到 Dify Chat API"""
-    from services.dify_service import call_dify_chat
+    """聊天接口 - 代理转发到 Dify Chat API (流式响应)"""
+    from fastapi.responses import StreamingResponse
+    import httpx
+    import json
+    from config import DIFY_CONFIG, ROLE_PROMPT_MAP
     
-    system_prompt = get_system_prompt_by_role(chat_data.role)
-    return await call_dify_chat(
-        role=chat_data.role,
-        message=chat_data.message,
-        conversation_id=chat_data.conversation_id or "",
-        system_prompt=system_prompt
+    user = get_current_user(request)
+    user_role = user.get("role") if user else chat_data.role
+    system_prompt = ROLE_PROMPT_MAP.get(user_role, ROLE_PROMPT_MAP["reception"])
+    
+    # 记录问答日志
+    await log_chat_question(
+        user_id=user.get("username") if user else "anonymous",
+        user_name=user.get("display_name") if user else "匿名用户",
+        user_role=user_role,
+        question=chat_data.message,
+        conversation_id=chat_data.conversation_id,
+        ip_address=request.client.host if request.client else None
+    )
+    
+    async def stream_response():
+        """流式转发 Dify API 响应"""
+        base_url = str(DIFY_CONFIG.get("base_url", "")).rstrip("/")
+        api_key = str(DIFY_CONFIG.get("api_key", ""))
+        
+        payload = {
+            "inputs": {"sys_prompt": system_prompt},
+            "query": chat_data.message,
+            "response_mode": "streaming",
+            "conversation_id": chat_data.conversation_id or "",
+            "user": user.get("username") if user else "anonymous",
+            "files": []
+        }
+        
+        headers = {
+            "Authorization": f"Bearer {api_key}",
+            "Content-Type": "application/json"
+        }
+        
+        url = f"{base_url}/chat-messages"
+        
+        try:
+            async with httpx.AsyncClient(timeout=float(DIFY_CONFIG.get("timeout", 180))) as client:
+                async with client.stream('POST', url, json=payload, headers=headers) as response:
+                    async for line in response.aiter_lines():
+                        if line:
+                            yield line + '\n'
+        except Exception as e:
+            logger.error(f"[Chat Stream] Error: {e}")
+            yield f'data: {{"event": "error", "message": "{str(e)}"}}\n\n'
+    
+    return StreamingResponse(
+        stream_response(),
+        media_type="text/event-stream",
+        headers={
+            "Cache-Control": "no-cache",
+            "Connection": "keep-alive",
+        }
     )
 
 
@@ -396,6 +499,16 @@ async def api_upload_document(
         
         if upload_result["success"]:
             logger.info("[Upload Document] Upload successful")
+            # 记录知识导入日志
+            await log_knowledge_import(
+                user_id=user["username"],
+                user_name=user["display_name"],
+                user_role=user["role"],
+                file_name=file.filename,
+                file_size=len(file_content),
+                status="success",
+                ip_address=request.client.host if request.client else None
+            )
             return {"success": True, "message": "文件上传成功", "filename": file.filename}
         else:
             error_msg = upload_result.get("error", "未知错误")
@@ -596,6 +709,16 @@ async def api_download_document(
             
             if not filename:
                 filename = f"document_{document_id}"
+            
+            # 记录文档下载日志
+            await log_document_download(
+                user_id=user["username"],
+                user_name=user["display_name"],
+                user_role=user["role"],
+                document_id=document_id,
+                document_name=filename,
+                ip_address=request.client.host if request.client else None
+            )
             
             # 使用 RAGFlow API 文档指定的端点获取文档内容
             # GET /api/v1/datasets/{dataset_id}/documents/{document_id}
@@ -810,6 +933,16 @@ async def api_search_chunks(
         )
         
         if result.get("success"):
+            # 记录知识搜索日志
+            await log_knowledge_search(
+                user_id=user["username"],
+                user_name=user["display_name"],
+                user_role=user["role"],
+                keyword=keyword,
+                result_count=result.get("total", 0),
+                dataset_id=dataset_id if dataset_id else None,
+                ip_address=request.client.host if request.client else None
+            )
             return {
                 "success": True,
                 "chunks": result.get("chunks", []),
@@ -831,3 +964,72 @@ async def api_search_chunks(
             "success": False,
             "message": f"搜索出错: {str(e)}"
         }
+
+
+# =============================================================================
+# 审计日志 API
+# =============================================================================
+
+@router.get("/audit-logs")
+async def api_get_audit_logs(
+    request: Request,
+    page: int = 1,
+    page_size: int = 50,
+    action: str = "",
+    user: str = "",
+    date_from: str = "",
+    date_to: str = ""
+):
+    """
+    获取审计日志列表
+    
+    Args:
+        page: 页码
+        page_size: 每页数量
+        action: 操作类型过滤
+        user: 用户过滤
+        date_from: 开始日期
+        date_to: 结束日期
+    """
+    current_user = get_current_user(request)
+    if not current_user:
+        raise HTTPException(status_code=401, detail="未登录")
+    
+    # 只有管理员可以查看审计日志
+    if current_user.get("role") != "admin":
+        raise HTTPException(status_code=403, detail="权限不足，仅管理员可查看审计日志")
+    
+    result = audit_logger.read_logs(
+        page=page,
+        page_size=page_size,
+        action_filter=action if action else None,
+        user_filter=user if user else None,
+        date_from=date_from if date_from else None,
+        date_to=date_to if date_to else None
+    )
+    
+    return {
+        "success": True,
+        "logs": result.get("logs", []),
+        "total": result.get("total", 0),
+        "page": result.get("page", 1),
+        "page_size": result.get("page_size", 50),
+        "total_pages": result.get("total_pages", 1)
+    }
+
+
+@router.get("/audit-logs/action-types")
+async def api_get_audit_action_types(request: Request):
+    """获取审计日志操作类型列表"""
+    current_user = get_current_user(request)
+    if not current_user:
+        raise HTTPException(status_code=401, detail="未登录")
+    
+    if current_user.get("role") != "admin":
+        raise HTTPException(status_code=403, detail="权限不足")
+    
+    action_types = audit_logger.get_action_types()
+    return {
+        "success": True,
+        "action_types": action_types
+    }
